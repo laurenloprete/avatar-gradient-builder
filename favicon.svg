@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="256" fill="white"/>
+  <text
+    x="256"
+    y="256"
+    font-family="Helvetica, Arial, sans-serif"
+    font-size="196"
+    font-weight="500"
+    fill="#1a1a1a"
+    text-anchor="middle"
+    dominant-baseline="central"
+    letter-spacing="-4"
+  >TK</text>
+</svg>
