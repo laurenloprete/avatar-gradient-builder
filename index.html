@@ -406,6 +406,142 @@
       #swatch-group { gap: 9px; }
       .swatch { width: 18px; height: 18px; }
     }
+
+    /* ══════════════════════════════════════════════════════
+       PAGE NAVIGATION
+    ══════════════════════════════════════════════════════ */
+    #page-nav {
+      position: fixed;
+      bottom: 90px;
+      left: 90px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      z-index: 200;
+    }
+    .nav-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+    .nav-btn:hover { opacity: 0.65; }
+    .nav-btn.active { opacity: 1; }
+
+    /* single dot */
+    .nav-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    /* 3×3 grid icon */
+    .nav-grid-icon {
+      display: grid;
+      grid-template-columns: repeat(3, 3px);
+      grid-template-rows: repeat(3, 3px);
+      gap: 2.5px;
+    }
+    .nav-grid-icon span {
+      display: block;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    @media (max-width: 640px) {
+      #page-nav { bottom: 24px; left: 24px; }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       PAGE 2 — AVATAR GRID
+    ══════════════════════════════════════════════════════ */
+    #page-2 {
+      display: none;
+      position: fixed;
+      top: 90px;
+      left: 90px;
+      right: 420px; /* clear of controls panel */
+      bottom: 90px;
+      overflow: hidden;
+      align-items: center;
+      justify-content: center;
+    }
+    body.page-2 #page-2   { display: flex; }
+    body.page-2 #avatar   { display: none; }
+    body.page-2 #bottom-area  { display: none; }
+    body.page-2 #bottom-right { display: none; }
+    body.page-2 .site-footer  { display: none; }
+
+    #avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      gap: 16px;
+    }
+
+    .grid-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .grid-avatar svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      #page-2 { right: 50px; top: 50px; bottom: 100px; }
+      #avatar-grid {
+        grid-template-columns: repeat(7, 36px);
+        gap: 12px;
+      }
+      .grid-avatar { width: 36px; height: 36px; }
+    }
+    @media (max-width: 640px) {
+      #page-2 { top: 40px; left: 24px; right: 24px; bottom: 80px; }
+      #avatar-grid {
+        grid-template-columns: repeat(5, 44px);
+        gap: 12px;
+        overflow-y: auto;
+      }
+      .grid-avatar { width: 44px; height: 44px; }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════════════════ */
+    .site-footer {
+      position: fixed;
+      bottom: 90px;
+      right: 90px;
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      color: #444;
+      text-align: right;
+    }
+    .site-footer a {
+      color: #666;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .site-footer a:hover { color: #999; }
+
+    @media (max-width: 640px) {
+      .site-footer { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -585,6 +721,30 @@
   </div>
 
 </div>
+
+<!-- Page 2 — avatar grid -->
+<div id="page-2">
+  <div id="avatar-grid"></div>
+</div>
+
+<!-- Page navigation -->
+<div id="page-nav">
+  <button id="nav-p1" class="nav-btn active" title="Generator">
+    <div class="nav-dot"></div>
+  </button>
+  <button id="nav-p2" class="nav-btn" title="Gallery">
+    <div class="nav-grid-icon">
+      <span></span><span></span><span></span>
+      <span></span><span></span><span></span>
+      <span></span><span></span><span></span>
+    </div>
+  </button>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+  2026 made by <a href="https://laurenloprete.design" target="_blank" rel="noopener">lauren loprete</a> with help from claude code
+</footer>
 
 <script>
 /* ════════════════════════════════════════════════════════════
@@ -996,6 +1156,89 @@ function applyFilterParams() {
 applyGeometry(sessSeed);
 applyFilterParams();  // sync SVG filter attrs to slider defaults
 nameInput.focus();
+
+/* ════════════════════════════════════════════════════════════
+   AVATAR GRID  (page 2)
+   ════════════════════════════════════════════════════════════ */
+const GRID_NAMES = [
+  'Alessandra','Benjamin','Catalina','Dmitri','Elena',
+  'Fabian','Gemma','Hana','Ibrahim','Juliet',
+  'Kenji','Luna','Matteo','Niamh','Olivia',
+  'Pablo','Quinn','Rosa','Sebastian','Thalia',
+  'Uma','Victor','Wren','Xavi','Yasmine',
+  'Zoe','Arnav','Beatriz','Cyrus','Dasha',
+  'Emeka','Freya','Gideon','Hira','Ines',
+  'Juno','Kiran','Lior','Mila','Nadia',
+  'Omar','Petra','Qais','Reina','Soren',
+  'Tara','Umar','Vera','Wyatt','Xiomara',
+  'Yael','Zara','Aditi','Bruno','Cleo',
+  'Dani','Elif','Felix','Greer','Hugo',
+  'Isla','Jada','Kai','Lena','Marco',
+  'Nour','Odessa','Pax','Remy','Sage',
+  'Theo','Ursula','Veda','Willa','Xena',
+  'Yuki','Zola','Asha','Beck','Cora',
+  'Drew','Eden','Finn','Gala','Hero',
+  'Ines','Jett','Knox','Lux','Mars',
+  'Nova','Oona','Penn','Rea','Sol',
+  'Tove','Uri','Val','West','Xio',
+];
+
+let gridBuilt = false;
+
+function buildAvatarGrid() {
+  if (gridBuilt) return;
+  gridBuilt = true;
+  const container = document.getElementById('avatar-grid');
+  const SZ = 308;
+
+  GRID_NAMES.forEach((name, idx) => {
+    const seed   = (idx + 1) * 7919;
+    const layout = pickLayout(seed);
+    const ch     = name[0];
+    const cols   = selectTriadFromPalette(ch, seed);
+    const [p1, p2, p3] = layout;
+
+    const initial = name[0].toUpperCase();
+
+    const div = document.createElement('div');
+    div.className = 'grid-avatar';
+    div.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 308 308">
+      <rect width="308" height="308" fill="${cols[0]}"/>
+      <ellipse cx="${(p1[0]*SZ).toFixed(1)}" cy="${(p1[1]*SZ).toFixed(1)}"
+               rx="180" ry="180" fill="${cols[0]}" filter="url(#blob-mesh)"/>
+      <ellipse cx="${(p2[0]*SZ).toFixed(1)}" cy="${(p2[1]*SZ).toFixed(1)}"
+               rx="180" ry="180" fill="${cols[1]}" filter="url(#blob-mesh)"
+               style="mix-blend-mode:soft-light"/>
+      <ellipse cx="${(p3[0]*SZ).toFixed(1)}" cy="${(p3[1]*SZ).toFixed(1)}"
+               rx="180" ry="180" fill="${cols[2]}" filter="url(#blob-mesh)"
+               style="mix-blend-mode:soft-light"/>
+      <text x="154" y="154" text-anchor="middle" dominant-baseline="central"
+            font-family="Helvetica,Arial,sans-serif" font-size="120"
+            font-weight="500" fill="rgba(255,255,255,0.9)">${initial}</text>
+    </svg>`;
+    container.appendChild(div);
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   PAGE SWITCHING
+   ════════════════════════════════════════════════════════════ */
+const navP1 = document.getElementById('nav-p1');
+const navP2 = document.getElementById('nav-p2');
+
+navP1.addEventListener('click', () => {
+  document.body.classList.remove('page-2');
+  navP1.classList.add('active');
+  navP2.classList.remove('active');
+  nameInput.focus();
+});
+
+navP2.addEventListener('click', () => {
+  buildAvatarGrid();
+  document.body.classList.add('page-2');
+  navP2.classList.add('active');
+  navP1.classList.remove('active');
+});
 </script>
 </body>
 </html>
