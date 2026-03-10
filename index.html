@@ -287,6 +287,125 @@
       background: var(--thumb);
       cursor: pointer;
     }
+
+    /* ── Responsive: tablet (≤ 900px) ────────────────────── */
+    @media (max-width: 900px) {
+      #avatar {
+        width: 220px;
+        height: 220px;
+        top: 50px;
+        left: 50px;
+      }
+      #avatar-initials { font-size: 88px; }
+      #controls { top: 50px; right: 50px; }
+      #bottom-area { bottom: 50px; left: 50px; right: 160px; }
+      #bottom-right { bottom: 50px; right: 50px; }
+      #name-input { font-size: 72px; }
+    }
+
+    /* ── Responsive: mobile (≤ 640px) ────────────────────── */
+    @media (max-width: 640px) {
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px 24px 56px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* Avatar — centered, proportional to viewport */
+      #avatar {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: min(200px, 56vw);
+        height: min(200px, 56vw);
+        order: 0;
+        margin-bottom: 32px;
+        flex-shrink: 0;
+      }
+
+      #avatar-initials {
+        font-size: min(80px, 22.4vw); /* ~40% of avatar */
+      }
+
+      /* Name input — centered, below avatar */
+      #bottom-area {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        width: 100%;
+        justify-content: center;
+        order: 1;
+        margin-bottom: 20px;
+      }
+
+      #name-input {
+        font-size: clamp(32px, 10vw, 56px);
+        letter-spacing: -1px;
+        text-align: center;
+        width: 100%;
+      }
+
+      /* Clear + Dice — below name input */
+      #bottom-right {
+        position: relative;
+        bottom: auto;
+        right: auto;
+        order: 2;
+        margin-bottom: 40px;
+        gap: 24px;
+      }
+
+      #clear-btn { font-size: 14px; }
+      #dice-btn  { font-size: 28px; }
+
+      /* Controls — below buttons, full width */
+      #controls {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        order: 3;
+        gap: 20px;
+      }
+
+      .ctrl-row { gap: 8px; }
+
+      .ctrl-label {
+        width: 76px;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+      }
+
+      .ctrl-icon {
+        width: 20px;
+        height: 16px;
+      }
+
+      /* Sliders fill remaining space */
+      input[type="range"] {
+        flex: 1;
+        min-width: 60px;
+        width: auto;
+      }
+
+      /* Larger thumb for touch */
+      input[type="range"]::-webkit-slider-thumb {
+        width: 14px;
+        height: 14px;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* Palette row — allow swatch group to wrap if needed */
+      #swatch-group { gap: 9px; }
+      .swatch { width: 18px; height: 18px; }
+    }
   </style>
 </head>
 <body>
