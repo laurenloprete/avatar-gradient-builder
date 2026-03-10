@@ -1,0 +1,7 @@
+{
+  "name": "Avatar Generator",
+  "id": "avatar-generator-render",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"]
+}

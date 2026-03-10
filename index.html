@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avatar</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --neutral:      #C4C4C4;
+      --track-empty:  #333333;
+      --track-filled: #888888;
+      --thumb:        #AAAAAA;
+    }
+
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #1a1a1a;
+      font-family: Helvetica, Arial, sans-serif;
+    }
+
+    /* ── Avatar ──────────────────────────────────────────── */
+    #avatar {
+      position: fixed;
+      top: 90px;
+      left: 90px;
+      width: 308px;   /* 154px × 2 */
+      height: 308px;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    #avatar-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #avatar-initials {
+      position: relative;
+      z-index: 1;
+      color: #fff;
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 500;
+      font-size: 123px;  /* 40% of 308px */
+      line-height: 1;
+      letter-spacing: -0.01em;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    /* ── Bottom input area ───────────────────────────────── */
+    #bottom-area {
+      position: fixed;
+      bottom: 90px;
+      left: 90px;
+      right: 200px;         /* clear + dice cluster in bottom-right */
+      display: flex;
+      align-items: baseline;
+    }
+
+    #name-input {
+      flex: 1;
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 500;
+      font-size: 100px;
+      letter-spacing: -2px;
+      line-height: 1.0;
+      color: #FFFFFF;
+      caret-color: #555;
+      outline: none;
+      border: none;
+      background: none;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    #name-input:empty::before {
+      content: attr(data-placeholder);
+      color: rgba(196, 196, 196, 0.6);
+      pointer-events: none;
+    }
+
+    /* ── Bottom-right cluster (clear + dice) ─────────────── */
+    #bottom-right {
+      position: fixed;
+      bottom: 90px;
+      right: 90px;
+      display: flex;
+      align-items: baseline;  /* text baselines aligned */
+      gap: 20px;
+    }
+
+    #clear-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #666;
+      padding: 0;
+      transition: color 0.15s;
+    }
+    #clear-btn:hover { color: #999; }
+
+    #dice-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 26px;
+      line-height: 1;
+      color: #666;
+      padding: 0;
+      transition: color 0.15s;
+    }
+    #dice-btn:hover { color: #999; }
+
+    /* ── Palette swatches ────────────────────────────────── */
+    .ctrl-divider {
+      height: 1px;
+      background: #2A2A2A;
+      margin: 2px 0;
+    }
+
+    #swatch-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: 1;
+      transition: opacity 0.2s;
+    }
+    #swatch-group.dimmed { opacity: 0.28; }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: block;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .swatch:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+    }
+    /* Hide the native color input visually but keep it functional */
+    .swatch input[type="color"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    /* GEN pill — active when in generative mode, dimmed when palette is driving */
+    #mode-btn {
+      background: #333;
+      border: 1px solid #484848;
+      border-radius: 100px;
+      cursor: pointer;
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: #AAAAAA;
+      padding: 3px 9px;
+      flex-shrink: 0;
+      transition: color 0.2s, background 0.2s, border-color 0.2s;
+    }
+    #mode-btn:hover { color: #DDDDDD; border-color: #666; }
+
+    /* Disabled look when palette mode is active */
+    #mode-btn.pal-active {
+      background: transparent;
+      border-color: #272727;
+      color: #353535;
+    }
+    #mode-btn.pal-active:hover {
+      border-color: #3A3A3A;
+      color: #555;
+    }
+
+    /* ── Controls panel ──────────────────────────────────── */
+    #controls {
+      position: fixed;
+      top: 90px;
+      right: 90px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;        /* 18 × 1.2 */
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;        /* 10 × 1.2 */
+    }
+
+    .ctrl-label {
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 12px;  /* 10 × 1.2 */
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #666;
+      width: 98px;      /* 82 × 1.2 */
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .ctrl-icon {
+      flex-shrink: 0;
+      display: block;
+      opacity: 0.5;
+      width: 26px;    /* fixed width — keeps all slider tracks left-aligned */
+      height: 18px;   /* fixed height — keeps all rows the same height */
+      overflow: visible;
+    }
+
+    /* ── Range slider ────────────────────────────────────── */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 132px;     /* 110 × 1.2 */
+      height: 2px;
+      border-radius: 1px;
+      outline: none;
+      cursor: pointer;
+      background: linear-gradient(
+        to right,
+        var(--track-filled) 0%, var(--track-filled) var(--pct, 0%),
+        var(--track-empty)  var(--pct, 0%), var(--track-empty)  100%
+      );
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--thumb);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { background: #DDDDDD; }
+
+    /* Firefox */
+    input[type="range"]::-moz-range-track {
+      height: 2px;
+      background: var(--track-empty);
+      border-radius: 1px;
+    }
+    input[type="range"]::-moz-range-progress {
+      height: 2px;
+      background: var(--track-filled);
+      border-radius: 1px;
+    }
+    input[type="range"]::-moz-range-thumb {
+      border: none;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--thumb);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Avatar circle -->
+<div id="avatar">
+  <svg id="avatar-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 308 308">
+    <defs>
+      <!--
+        The mesh filter: turbulence displaces the colored blobs,
+        then a gaussian blur blends the edges organically.
+        High displacement (~80% of avatar size ≈ 120px scale).
+      -->
+      <filter id="blob-mesh" x="-55%" y="-55%" width="210%" height="210%"
+              color-interpolation-filters="sRGB">
+        <feTurbulence id="turb" type="fractalNoise"
+          baseFrequency="0.009 0.008" numOctaves="2" seed="1" result="noise"/>
+        <feDisplacementMap id="sv-disp" in="SourceGraphic" in2="noise"
+          scale="244" xChannelSelector="R" yChannelSelector="G" result="disp"/>
+        <feGaussianBlur id="sv-blur" in="disp" stdDeviation="26"/>
+      </filter>
+      <!-- Grain overlay filter: high-freq fractal noise desaturated to gray -->
+      <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%"
+              color-interpolation-filters="sRGB">
+        <feTurbulence id="grain-turb" type="fractalNoise"
+          baseFrequency="0.65 0.65" numOctaves="3" seed="5" result="noise"/>
+        <feColorMatrix type="saturate" values="0" in="noise"/>
+      </filter>
+      <clipPath id="avatar-clip">
+        <circle cx="154" cy="154" r="154"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#avatar-clip)">
+      <!-- Static neutral background (never colored) -->
+      <rect id="sv-bg" width="308" height="308" fill="#1a1a1a"/>
+      <!-- Three blobs — each filtered independently so all colors stay visible -->
+      <g>
+        <ellipse id="sv-b1" cx="154" cy="68"  rx="180" ry="180" filter="url(#blob-mesh)"/>
+        <ellipse id="sv-b2" cx="228" cy="198" rx="180" ry="180" filter="url(#blob-mesh)" style="mix-blend-mode:soft-light"/>
+        <ellipse id="sv-b3" cx="80"  cy="198" rx="180" ry="180" filter="url(#blob-mesh)" style="mix-blend-mode:soft-light"/>
+      </g>
+      <!-- Grain overlay: fractal noise at mix-blend-mode overlay -->
+      <rect id="grain-rect" width="308" height="308"
+            filter="url(#grain-filter)"
+            style="mix-blend-mode:soft-light; opacity:0; pointer-events:none;"/>
+    </g>
+  </svg>
+  <span id="avatar-initials"></span>
+</div>
+
+<!-- Text input -->
+<div id="bottom-area">
+  <div id="name-input"
+       contenteditable="true"
+       spellcheck="false"
+       autocorrect="off"
+       autocomplete="off"
+       data-placeholder="type your name"></div>
+</div>
+
+<!-- Clear + dice cluster, bottom right -->
+<div id="bottom-right">
+  <button id="clear-btn">Clear</button>
+  <button id="dice-btn" title="Randomize">&#x2684;</button>
+</div>
+
+<!-- Controls panel -->
+<div id="controls">
+
+  <!-- Turbulence (baseFrequency) -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">turbulence</span>
+    <!-- low: one broad smooth wave -->
+    <svg class="ctrl-icon" viewBox="0 0 22 14" fill="none">
+      <path d="M1,7 C4.5,2 7.5,2 11,7 C14.5,12 17.5,12 21,7"
+            stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <input type="range" id="sl-turb" min="3" max="25" step="1" value="9"
+           title="baseFrequency">
+    <!-- high: many tight ripples -->
+    <svg class="ctrl-icon" viewBox="0 0 22 14" fill="none">
+      <path d="M1,7 C2.2,4 3.4,4 4.6,7 C5.8,10 7,10 8.2,7 C9.4,4 10.6,4 11.8,7 C13,10 14.2,10 15.4,7 C16.6,4 17.8,4 19,7 C20.2,10 20.8,10 21,7"
+            stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <!-- Octaves (numOctaves) -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">octaves</span>
+    <!-- low: single smooth arc -->
+    <svg class="ctrl-icon" viewBox="0 0 22 14" fill="none">
+      <path d="M1,10 C7,1 15,1 21,10"
+            stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <input type="range" id="sl-oct" min="1" max="6" step="1" value="2"
+           title="numOctaves">
+    <!-- high: stacked layered waves -->
+    <svg class="ctrl-icon" viewBox="0 0 22 14" fill="none">
+      <path d="M1,4 C3,2 5,2 7,4 C9,6 11,6 13,4 C15,2 17,2 19,4 C20,5 21,5 21,4"
+            stroke="#888" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M1,8 C4,6 7,6 10,8 C13,10 16,10 19,8 C20,7 21,7 21,8"
+            stroke="#888" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
+      <path d="M1,12 C6,10 16,10 21,12"
+            stroke="#888" stroke-width="1" stroke-linecap="round" opacity="0.35"/>
+    </svg>
+  </div>
+
+  <!-- Displacement (feDisplacementMap scale) -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">displacement</span>
+    <!-- low: clean circle -->
+    <svg class="ctrl-icon" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="5.5" stroke="#888" stroke-width="1.5"/>
+    </svg>
+    <input type="range" id="sl-disp" min="20" max="200" step="2" value="122"
+           title="scale">
+    <!-- high: warped blobby path -->
+    <svg class="ctrl-icon" viewBox="0 0 16 16" fill="none">
+      <path d="M8,2 C12,1 14.5,4 13.5,8 C14.5,12 12,15 8,14 C4,15 1.5,12 2.5,8 C1.5,4 4,1 8,2 Z"
+            stroke="#888" stroke-width="1.5"/>
+    </svg>
+  </div>
+
+  <!-- Blur (feGaussianBlur stdDeviation) -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">blur</span>
+    <!-- low: crisp solid dot -->
+    <svg class="ctrl-icon" viewBox="0 0 16 16">
+      <circle cx="8" cy="8" r="5" fill="#888"/>
+    </svg>
+    <input type="range" id="sl-blur" min="3" max="28" step="0.5" value="13"
+           title="stdDeviation">
+    <!-- high: blurry dot -->
+    <svg class="ctrl-icon" viewBox="0 0 16 16">
+      <circle cx="8" cy="8" r="5" fill="#888" style="filter:blur(3px)"/>
+    </svg>
+  </div>
+
+  <!-- Grain (overlay opacity) -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">grain</span>
+    <!-- low: smooth flat bar -->
+    <svg class="ctrl-icon" viewBox="0 0 22 14" fill="none">
+      <line x1="1" y1="7" x2="21" y2="7" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <input type="range" id="sl-grain" min="0" max="0.7" step="0.01" value="0"
+           title="grain">
+    <!-- high: scattered dots -->
+    <svg class="ctrl-icon" viewBox="0 0 22 14">
+      <circle cx="2"  cy="3"  r="1"   fill="#888"/>
+      <circle cx="7"  cy="11" r="1"   fill="#888"/>
+      <circle cx="11" cy="2"  r="1"   fill="#888"/>
+      <circle cx="16" cy="9"  r="1"   fill="#888"/>
+      <circle cx="20" cy="4"  r="1"   fill="#888"/>
+      <circle cx="4"  cy="8"  r="0.8" fill="#888"/>
+      <circle cx="9"  cy="6"  r="0.8" fill="#888"/>
+      <circle cx="14" cy="13" r="0.8" fill="#888"/>
+      <circle cx="19" cy="12" r="0.8" fill="#888"/>
+    </svg>
+  </div>
+
+  <!-- Divider -->
+  <div class="ctrl-divider"></div>
+
+  <!-- Palette swatches + mode toggle -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">palette</span>
+    <div id="swatch-group" class="dimmed">
+      <label class="swatch" style="background:#97643D"><input type="color" value="#97643D"></label>
+      <label class="swatch" style="background:#99994C"><input type="color" value="#99994C"></label>
+      <label class="swatch" style="background:#19331C"><input type="color" value="#19331C"></label>
+      <label class="swatch" style="background:#408070"><input type="color" value="#408070"></label>
+      <label class="swatch" style="background:#508040"><input type="color" value="#508040"></label>
+      <label class="swatch" style="background:#804040"><input type="color" value="#804040"></label>
+    </div>
+    <button id="mode-btn" title="Switch to generative colors">GEN</button>
+  </div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   SEEDED PRNG  (mulberry32)
+   ════════════════════════════════════════════════════════════ */
+function makeRNG(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function newSeed() { return (Math.random() * 0xFFFFFFF | 0) + 1; }
+
+/* ════════════════════════════════════════════════════════════
+   SYLLABLE COUNTING
+   ════════════════════════════════════════════════════════════ */
+function countSyllables(text) {
+  let total = 0;
+  for (const word of text.trim().split(/\s+/)) {
+    const w = word.toLowerCase().replace(/[^a-z]/g, '');
+    if (!w) continue;
+    let n = (w.match(/[aeiou]+/g) || []).length;
+    // subtract silent terminal -e (but not -ee, -le)
+    if (w.length > 2 && /[^aeiou]e$/.test(w) && !/ee$|le$/.test(w) && n > 1) n--;
+    total += Math.max(1, n);
+  }
+  return total;
+}
+
+/* ════════════════════════════════════════════════════════════
+   COLOR GENERATION
+   Harmonic modes: 2/3 analogous, 1/3 split-complementary.
+   Saturation pulled ~5% below a "default" of 73 → 68.
+   Avoid red (345–14°), hot-pink (300–345°), and brownish
+   low-sat warm tones (15–34°).
+   ════════════════════════════════════════════════════════════ */
+const BASE_SAT = 68;
+const BASE_LGT = 52;
+
+function safeHue(h) {
+  h = ((h % 360) + 360) % 360;
+  // Push red/hot-pink/brown zone (296–34°) into safe greens+blues+purples
+  if (h >= 296 || h < 35) {
+    h = (h + 70) % 360;
+    if (h < 40) h += 40; // ensure we clear the brown edge
+  }
+  return ((h % 360) + 360) % 360;
+}
+
+function makeColors(firstChar, seed, mode) {
+  const r = makeRNG(seed);
+  const j = () => r() * 10 - 5; // ±5 jitter for sat/lightness
+
+  // Map A–Z across the safe hue space (40°–295°) so each letter
+  // reliably produces a distinct starting color. Small ±20° session
+  // jitter adds variety without clobbering the letter identity.
+  const code  = firstChar.toLowerCase().charCodeAt(0) - 97; // 0–25
+  const letterH = 40 + (code / 25) * 255; // 40° (A) → 295° (Z)
+  const h1 = safeHue(letterH + (r() - 0.5) * 40);
+
+  let h2, h3;
+  if (mode === 'analogous') {
+    // Wider spread (60–90°) so colors stay visually distinct after blur
+    const spread = 60 + r() * 30;
+    h2 = safeHue(h1 + spread);
+    h3 = safeHue(h1 + spread * 2);
+  } else {
+    // split-complementary: naturally distinct (150° / 210°)
+    h2 = safeHue(h1 + 150);
+    h3 = safeHue(h1 + 210);
+  }
+
+  return [
+    `hsl(${h1.toFixed(0)},${(BASE_SAT + j()).toFixed(0)}%,${(BASE_LGT + j()).toFixed(0)}%)`,
+    `hsl(${h2.toFixed(0)},${(BASE_SAT + j()).toFixed(0)}%,${(BASE_LGT + j()).toFixed(0)}%)`,
+    `hsl(${h3.toFixed(0)},${(BASE_SAT + j()).toFixed(0)}%,${(BASE_LGT + j()).toFixed(0)}%)`,
+  ];
+}
+
+/* ════════════════════════════════════════════════════════════
+   BLOB LAYOUTS — 6 triangular arrangements, 3 positions each.
+   Each entry: [[b1 x%,y%], [b2 x%,y%], [b3 x%,y%]]
+   Positions sit at ~120° intervals around centre so each blob
+   occupies a distinct third of the circle.
+   ════════════════════════════════════════════════════════════ */
+const LAYOUTS = [
+  [[.50, .22], [.74, .64], [.26, .64]],   // apex up
+  [[.50, .78], [.26, .36], [.74, .36]],   // apex down
+  [[.22, .30], [.78, .30], [.50, .82]],   // wide-top
+  [[.22, .70], [.78, .70], [.50, .18]],   // wide-bottom
+  [[.20, .50], [.72, .22], [.72, .78]],   // leftward
+  [[.80, .50], [.28, .22], [.28, .78]],   // rightward
+];
+
+function pickLayout(seed) {
+  const r = makeRNG(seed ^ 0xDEAD);
+  return LAYOUTS[Math.floor(r() * LAYOUTS.length)];
+}
+function turbSeedFrom(seed) { return ((seed ^ 0xBEEF) % 997) + 1; }
+
+/* ════════════════════════════════════════════════════════════
+   DOM REFS
+   ════════════════════════════════════════════════════════════ */
+const svBg       = document.getElementById('sv-bg');
+const svB1       = document.getElementById('sv-b1');
+const svB2       = document.getElementById('sv-b2');
+const svB3       = document.getElementById('sv-b3');
+const turbEl     = document.getElementById('turb');
+const dispEl     = document.getElementById('sv-disp');
+const blurEl     = document.getElementById('sv-blur');
+const initialsEl = document.getElementById('avatar-initials');
+const nameInput  = document.getElementById('name-input');
+const clearBtn   = document.getElementById('clear-btn');
+const diceBtn    = document.getElementById('dice-btn');
+const slTurb     = document.getElementById('sl-turb');
+const slOct      = document.getElementById('sl-oct');
+const slDisp     = document.getElementById('sl-disp');
+const slBlur     = document.getElementById('sl-blur');
+const slGrain    = document.getElementById('sl-grain');
+const grainRect  = document.getElementById('grain-rect');
+const swatchGroup = document.getElementById('swatch-group');
+const modeBtn    = document.getElementById('mode-btn');
+const swatchEls  = Array.from(document.querySelectorAll('.swatch'));
+
+const NEUTRAL = '#C4C4C4';
+const DEFAULT_PALETTE = ['#97643D', '#99994C', '#19331C', '#408070', '#508040', '#804040'];
+
+/* ════════════════════════════════════════════════════════════
+   PALETTE STATE
+   ════════════════════════════════════════════════════════════ */
+let paletteMode = false;
+let palette = swatchEls.map(s => s.querySelector('input').value);
+
+// Pick 3 spread-out colors from the 6-slot palette.
+// Uses every-other-index spacing so adjacent swatches aren't grouped.
+function selectTriadFromPalette(firstChar, seed) {
+  const r    = makeRNG(seed ^ 0xCAFE);
+  const code = firstChar.toLowerCase().charCodeAt(0) - 97;
+  const base = (code + Math.floor(r() * 6)) % 6;
+  return [palette[base % 6], palette[(base + 2) % 6], palette[(base + 4) % 6]];
+}
+
+function updatePaletteUI() {
+  if (paletteMode) {
+    // Palette driving — swatches bright, GEN pill looks disabled
+    swatchGroup.classList.remove('dimmed');
+    modeBtn.classList.add('pal-active');
+  } else {
+    // Generative mode — swatches dimmed, GEN pill looks enabled
+    swatchGroup.classList.add('dimmed');
+    modeBtn.classList.remove('pal-active');
+  }
+}
+
+// Initial SVG element styles (with transitions)
+// svBg is a static neutral — no color transitions needed
+// Set initial styles without cssText so mix-blend-mode on b2/b3 is preserved
+const BLOB_TRANSITION = 'fill 1.2s ease, opacity 1.2s ease';
+[svB1, svB2, svB3].forEach(b => {
+  b.style.fill       = NEUTRAL;
+  b.style.opacity    = '0';
+  b.style.transition = BLOB_TRANSITION;
+});
+
+/* ════════════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════════════ */
+let sessSeed = newSeed();
+let sessMode = Math.random() < 2/3 ? 'analogous' : 'split-complementary';
+let colors   = [];    // up to 3 pre-generated harmonic colors
+let visible  = 0;     // how many color layers are currently shown
+let firstCh  = '';    // first non-space char that triggered color gen
+
+/* ════════════════════════════════════════════════════════════
+   APPLY SESSION GEOMETRY
+   (positions + turbulence seed — shared by reset & dice)
+   ════════════════════════════════════════════════════════════ */
+function applyGeometry(seed) {
+  const layout = pickLayout(seed);
+  const SZ = 308;
+  svB1.setAttribute('cx', (layout[0][0] * SZ).toFixed(1));
+  svB1.setAttribute('cy', (layout[0][1] * SZ).toFixed(1));
+  svB2.setAttribute('cx', (layout[1][0] * SZ).toFixed(1));
+  svB2.setAttribute('cy', (layout[1][1] * SZ).toFixed(1));
+  svB3.setAttribute('cx', (layout[2][0] * SZ).toFixed(1));
+  svB3.setAttribute('cy', (layout[2][1] * SZ).toFixed(1));
+  turbEl.setAttribute('seed', turbSeedFrom(seed));
+}
+
+/* ════════════════════════════════════════════════════════════
+   RESET SESSION
+   Called on Enter or ×. Snaps blobs off instantly, new seed.
+   ════════════════════════════════════════════════════════════ */
+function resetSession() {
+  sessSeed = newSeed();
+  sessMode = Math.random() < 2/3 ? 'analogous' : 'split-complementary';
+  colors   = [];
+  visible  = 0;
+  firstCh  = '';
+
+  // Disable transitions momentarily for a hard snap-off
+  [svB1, svB2, svB3].forEach(b => { b.style.transition = 'none'; b.style.opacity = '0'; });
+  svB1.setAttribute('rx', '180'); svB1.setAttribute('ry', '180');
+  svB2.setAttribute('rx', '180'); svB2.setAttribute('ry', '180');
+  svB3.setAttribute('rx', '180'); svB3.setAttribute('ry', '180');
+  svBg.style.fill = '#1a1a1a';
+  initialsEl.textContent = '';
+
+  applyGeometry(sessSeed);
+
+  // Re-enable transitions after a frame
+  requestAnimationFrame(() => {
+    [svB1, svB2, svB3].forEach(b => { b.style.transition = BLOB_TRANSITION; });
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   UPDATE AVATAR
+   Called on every keystroke. Drives initials + gradient state.
+   ════════════════════════════════════════════════════════════ */
+function updateAvatar(text) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+
+  // Initials
+  if (words.length === 0) initialsEl.textContent = '';
+  else if (words.length === 1) initialsEl.textContent = words[0][0].toUpperCase();
+  else initialsEl.textContent = (words[0][0] + words[1][0]).toUpperCase();
+
+  if (!text.trim()) {
+    svB1.style.opacity = '0';
+    svB2.style.opacity = '0';
+    svB3.style.opacity = '0';
+    visible = 0;
+    colors  = [];
+    firstCh = '';
+    return;
+  }
+
+  // Generate colors keyed to first char — only regenerate when first char changes
+  const ch = text.trim()[0];
+  if (ch !== firstCh || colors.length === 0) {
+    firstCh = ch;
+    colors  = selectTriadFromPalette(ch, sessSeed);
+    svBg.style.fill = colors[0];
+  }
+
+  const syl  = countSyllables(text);
+  const need = Math.min(syl, 3);  // one blob per syllable, max 3
+
+  // Grow blob 3 ~20% per extra syllable beyond 3
+  const extra = Math.max(0, syl - 3);
+  const grow  = 1 + extra * 0.2;
+  svB3.setAttribute('rx', (180 * grow).toFixed(1));
+  svB3.setAttribute('ry', (180 * grow).toFixed(1));
+
+  // Fade in each blob as its syllable threshold is reached
+  if (need >= 1 && visible < 1) {
+    svB1.style.fill = colors[0];
+    requestAnimationFrame(() => { svB1.style.opacity = '1'; });
+    visible = 1;
+  }
+  if (need >= 2 && visible < 2) {
+    svB2.style.fill = colors[1];
+    requestAnimationFrame(() => { svB2.style.opacity = '1'; });
+    visible = 2;
+  }
+  if (need >= 3 && visible < 3) {
+    svB3.style.fill = colors[2];
+    requestAnimationFrame(() => { svB3.style.opacity = '1'; });
+    visible = 3;
+  }
+
+  // Keep fills in sync (handles live palette edits without re-triggering fade-in)
+  if (visible >= 1) svB1.style.fill = colors[0];
+  if (visible >= 2) svB2.style.fill = colors[1];
+  if (visible >= 3) svB3.style.fill = colors[2];
+}
+
+/* ════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+   ════════════════════════════════════════════════════════════ */
+nameInput.addEventListener('input', () => {
+  updateAvatar(nameInput.textContent);
+});
+
+nameInput.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  nameInput.textContent = '';
+  resetSession();
+});
+
+clearBtn.addEventListener('click', () => {
+  nameInput.textContent = '';
+  resetSession();
+  nameInput.focus();
+});
+
+// Dice: new seed, keep current text, transition colors in place
+diceBtn.addEventListener('click', () => {
+  sessSeed = newSeed();
+  sessMode = Math.random() < 2/3 ? 'analogous' : 'split-complementary';
+  colors   = [];  // force palette regeneration
+  firstCh  = '';
+
+  // New geometry (instant, blobs may be visible — that's the dice "roll" feel)
+  applyGeometry(sessSeed);
+
+  // Recompute colors and update fills (transitions handle the blend)
+  const text = nameInput.textContent;
+  if (text.trim()) {
+    const ch = text.trim()[0];
+    firstCh  = ch;
+    colors   = selectTriadFromPalette(ch, sessSeed);
+    if (visible >= 1) svB1.style.fill = colors[0];
+    if (visible >= 2) svB2.style.fill = colors[1];
+    if (visible >= 3) svB3.style.fill = colors[2];
+  }
+});
+
+/* ════════════════════════════════════════════════════════════
+   PALETTE CONTROLS
+   ════════════════════════════════════════════════════════════ */
+swatchEls.forEach((swatch, i) => {
+  const input = swatch.querySelector('input');
+
+  // Clicking the label (swatch circle) activates palette mode if not already on
+  swatch.addEventListener('click', () => {
+    if (!paletteMode) {
+      paletteMode = true;
+      colors  = [];
+      firstCh = '';
+      updatePaletteUI();
+      updateAvatar(nameInput.textContent);
+    }
+  });
+
+  // Live color picker updates — input fires while dragging, change fires on close
+  function applyColorChange() {
+    palette[i] = input.value;
+    swatch.style.background = input.value;
+    if (!paletteMode) {
+      paletteMode = true;
+      updatePaletteUI();
+    }
+    colors  = [];
+    firstCh = '';
+    updateAvatar(nameInput.textContent);
+  }
+  input.addEventListener('input', applyColorChange);
+  input.addEventListener('change', applyColorChange);
+});
+
+// GEN pill — returns to generative mode and resets swatches to defaults
+modeBtn.addEventListener('click', () => {
+  paletteMode = false;
+  palette = [...DEFAULT_PALETTE];
+  swatchEls.forEach((swatch, i) => {
+    swatch.style.background = DEFAULT_PALETTE[i];
+    swatch.querySelector('input').value = DEFAULT_PALETTE[i];
+  });
+  colors  = [];
+  firstCh = '';
+  updatePaletteUI();
+  updateAvatar(nameInput.textContent);
+});
+
+/* ════════════════════════════════════════════════════════════
+   SLIDER CONTROLS
+   ════════════════════════════════════════════════════════════ */
+
+// Update the CSS filled-track indicator (--pct custom property)
+function fillTrack(input) {
+  const min = parseFloat(input.min);
+  const max = parseFloat(input.max);
+  const pct = ((parseFloat(input.value) - min) / (max - min)) * 100;
+  input.style.setProperty('--pct', pct.toFixed(1) + '%');
+}
+
+// Apply all slider values to the SVG filter
+function applyFilterParams() {
+  // baseFrequency: internal int 3–25 → actual 0.003–0.025
+  const freq = (parseInt(slTurb.value) / 1000).toFixed(3);
+  turbEl.setAttribute('baseFrequency', `${freq} ${(parseFloat(freq) * 0.89).toFixed(3)}`);
+
+  turbEl.setAttribute('numOctaves', slOct.value);
+
+  dispEl.setAttribute('scale', slDisp.value);
+
+  blurEl.setAttribute('stdDeviation', slBlur.value);
+
+  grainRect.style.opacity = slGrain.value;
+}
+
+[slTurb, slOct, slDisp, slBlur, slGrain].forEach(sl => {
+  sl.addEventListener('input', () => { fillTrack(sl); applyFilterParams(); });
+});
+
+// Seed initial track fills
+[slTurb, slOct, slDisp, slBlur, slGrain].forEach(fillTrack);
+
+/* ════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════ */
+applyGeometry(sessSeed);
+applyFilterParams();  // sync SVG filter attrs to slider defaults
+nameInput.focus();
+</script>
+</body>
+</html>
