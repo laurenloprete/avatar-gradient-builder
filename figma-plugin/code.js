@@ -14,6 +14,9 @@
     return [{ type: "SOLID", color: hex(color), opacity }];
   }
 
+  const MARGIN = 90;
+  const PALETTE = ["#97643D", "#99994C", "#19331C", "#408070", "#508040", "#804040"];
+
   const page = figma.currentPage;
 
   // ── Root frame ────────────────────────────────────────────────────
@@ -24,34 +27,43 @@
   root.clipsContent = true;
   page.appendChild(root);
 
-  // ── Avatar circle (top-left, 32px inset) ─────────────────────────
+  // ── Avatar circle ─────────────────────────────────────────────────
   const avatarFrame = figma.createFrame();
   avatarFrame.name = "Avatar";
   avatarFrame.resize(308, 308);
-  avatarFrame.x = 32;
-  avatarFrame.y = 32;
-  avatarFrame.fills = solid("#C4C4C4");
+  avatarFrame.x = MARGIN;
+  avatarFrame.y = MARGIN;
+  avatarFrame.fills = solid("#1a1a1a");
   avatarFrame.cornerRadius = 154;
   avatarFrame.clipsContent = true;
   root.appendChild(avatarFrame);
 
+  // Background fill (takes first palette color when name is typed)
+  const avatarBg = figma.createRectangle();
+  avatarBg.name = "Avatar BG";
+  avatarBg.resize(308, 308);
+  avatarBg.fills = solid(PALETTE[0]);
+  avatarFrame.appendChild(avatarBg);
+
+  // Blobs — individually filtered, soft-light blend on b2/b3
   const blobs = [
-    { name: "Blob Apex",  w: 230, h: 230, x: 38,  y: -50,  color: "#5C85FF" },
-    { name: "Blob Right", w: 210, h: 210, x: 110, y: 110,  color: "#9B59B6" },
-    { name: "Blob Left",  w: 190, h: 190, x: -30, y: 130,  color: "#00BCD4" },
+    { name: "Blob 1", cx: 154, cy: 68,  r: 180, color: PALETTE[0], blend: "NORMAL" },
+    { name: "Blob 2", cx: 228, cy: 198, r: 180, color: PALETTE[2], blend: "SOFT_LIGHT" },
+    { name: "Blob 3", cx: 80,  cy: 198, r: 180, color: PALETTE[4], blend: "SOFT_LIGHT" },
   ];
   for (const b of blobs) {
     const el = figma.createEllipse();
     el.name = b.name;
-    el.resize(b.w, b.h);
-    el.x = b.x;
-    el.y = b.y;
+    el.resize(b.r * 2, b.r * 2);
+    el.x = b.cx - b.r;
+    el.y = b.cy - b.r;
     el.fills = solid(b.color, 0.9);
-    el.blendMode = "SCREEN";
+    el.blendMode = b.blend;
     el.effects = [{ type: "LAYER_BLUR", radius: 26, visible: true }];
     avatarFrame.appendChild(el);
   }
 
+  // Initials
   const initials = figma.createText();
   initials.name = "Initials";
   initials.fontName = { family: "Inter", style: "Medium" };
@@ -65,7 +77,7 @@
   initials.y = 0;
   avatarFrame.appendChild(initials);
 
-  // ── Controls panel (top-right, 32px inset) ───────────────────────
+  // ── Controls panel (top-right) ────────────────────────────────────
   const LABEL_W  = 98;
   const ICON_W   = 26;
   const ICON_H   = 18;
@@ -130,13 +142,10 @@
     lbl.letterSpacing = { value: 8, unit: "PERCENT" };
     lbl.textAlignHorizontal = "RIGHT";
     lbl.resize(LABEL_W, ICON_H);
-    lbl.x = 0;
-    lbl.y = 0;
     row.appendChild(lbl);
 
-    const iconL = makeIconRect(`${labelText} icon-lo`);
+    const iconL = makeIconRect(`${labelText} lo`);
     iconL.x = LABEL_W + COL_GAP;
-    iconL.y = 0;
     row.appendChild(iconL);
 
     const slider = makeSlider(pct);
@@ -144,9 +153,8 @@
     slider.y = (ICON_H - 9) / 2;
     row.appendChild(slider);
 
-    const iconR = makeIconRect(`${labelText} icon-hi`);
+    const iconR = makeIconRect(`${labelText} hi`);
     iconR.x = LABEL_W + COL_GAP + ICON_W + COL_GAP + SLIDER_W + COL_GAP;
-    iconR.y = 0;
     row.appendChild(iconR);
 
     return row;
@@ -178,7 +186,6 @@
   const divider = figma.createRectangle();
   divider.name = "Divider";
   divider.resize(PANEL_W, 1);
-  divider.x = 0;
   divider.y = rowY;
   divider.fills = solid("#2A2A2A");
   controlsGroup.appendChild(divider);
@@ -199,18 +206,14 @@
   palLbl.letterSpacing = { value: 8, unit: "PERCENT" };
   palLbl.textAlignHorizontal = "RIGHT";
   palLbl.resize(LABEL_W, 16);
-  palLbl.x = 0;
-  palLbl.y = 0;
   palRow.appendChild(palLbl);
 
-  const swatchColors = ["#5C85FF", "#9B59B6", "#00BCD4", "#26A69A", "#FFC107", "#8BC34A"];
   let swatchX = LABEL_W + COL_GAP;
-  for (const c of swatchColors) {
+  for (const c of PALETTE) {
     const s = figma.createEllipse();
     s.name = `Swatch ${c}`;
     s.resize(16, 16);
     s.x = swatchX;
-    s.y = 0;
     s.fills = solid(c);
     s.strokes = [{ type: "SOLID", color: hex("#C4C4C4"), opacity: 0.4 }];
     s.strokeWeight = 1;
@@ -232,7 +235,6 @@
   genPill.paddingRight = 9;
   genPill.primaryAxisSizingMode = "AUTO";
   genPill.counterAxisSizingMode = "AUTO";
-
   const genText = figma.createText();
   genText.fontName = { family: "Inter", style: "Medium" };
   genText.fontSize = 10;
@@ -251,19 +253,20 @@
 
   controlsGroup.resize(PANEL_W, rowY);
   root.appendChild(controlsGroup);
-  controlsGroup.x = 1440 - 32 - PANEL_W;
-  controlsGroup.y = 32;
+  controlsGroup.x = 1440 - MARGIN - PANEL_W;
+  controlsGroup.y = MARGIN;
 
-  // ── Name input (bottom-left, 32px inset) ─────────────────────────
+  // ── Name input (bottom-left) ──────────────────────────────────────
   const nameInput = figma.createText();
   nameInput.name = "Name Input";
   nameInput.fontName = { family: "Inter", style: "Medium" };
-  nameInput.fontSize = 90;
+  nameInput.fontSize = 100;
+  nameInput.letterSpacing = { value: -2, unit: "PIXELS" };
   nameInput.characters = "type your name";
   nameInput.fills = solid("#C4C4C4", 0.35);
-  nameInput.x = 32;
+  nameInput.x = MARGIN;
   root.appendChild(nameInput);
-  nameInput.y = 900 - 32 - nameInput.height;
+  nameInput.y = 900 - MARGIN - nameInput.height;
 
   // ── Bottom-right buttons ──────────────────────────────────────────
   const clearBtn = figma.createText();
@@ -283,13 +286,11 @@
   diceBtn.fills = solid("#666666");
   root.appendChild(diceBtn);
 
-  // Align buttons to bottom-right
-  const btnY = 900 - 32 - Math.max(clearBtn.height, diceBtn.height);
-  clearBtn.y = btnY + (diceBtn.height - clearBtn.height) / 2;
-  diceBtn.y = btnY;
-  diceBtn.x = 1440 - 32 - diceBtn.width;
+  diceBtn.x = 1440 - MARGIN - diceBtn.width;
+  diceBtn.y = 900 - MARGIN - diceBtn.height;
   clearBtn.x = diceBtn.x - 20 - clearBtn.width;
+  clearBtn.y = diceBtn.y + (diceBtn.height - clearBtn.height) / 2;
 
   figma.viewport.scrollAndZoomIntoView([root]);
-  figma.closePlugin("Done! Your Avatar Generator design is ready.");
+  figma.closePlugin("Done — Avatar Generator updated.");
 })();

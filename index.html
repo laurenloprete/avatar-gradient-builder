@@ -557,9 +557,45 @@
     @media (max-width: 640px) {
       .site-footer { display: none; }
     }
+
+    /* ── Avatar context menu ─────────────────────────────── */
+    #avatar-ctx-menu {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      background: #242424;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      padding: 4px;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    #avatar-ctx-menu button {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      color: #e0e0e0;
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 5px;
+      letter-spacing: 0.02em;
+    }
+    #avatar-ctx-menu button:hover {
+      background: #333;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
+
+<!-- Avatar right-click context menu -->
+<div id="avatar-ctx-menu">
+  <button id="ctx-download-png">Download PNG</button>
+</div>
 
 <!-- Avatar circle -->
 <div id="avatar">
@@ -1246,6 +1282,95 @@ navP2.addEventListener('click', () => {
   navP2.classList.add('active');
   navP1.classList.remove('active');
 });
+
+/* ════════════════════════════════════════════════════════════
+   AVATAR EXPORT — right-click → Download PNG
+   ════════════════════════════════════════════════════════════ */
+const avatarDiv  = document.getElementById('avatar');
+const ctxMenu    = document.getElementById('avatar-ctx-menu');
+const ctxDownBtn = document.getElementById('ctx-download-png');
+
+avatarDiv.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  ctxMenu.style.display = 'block';
+  // Keep menu inside the viewport
+  const menuW = 160, menuH = 48;
+  const x = Math.min(e.clientX, window.innerWidth  - menuW - 8);
+  const y = Math.min(e.clientY, window.innerHeight - menuH - 8);
+  ctxMenu.style.left = x + 'px';
+  ctxMenu.style.top  = y + 'px';
+});
+
+document.addEventListener('click',       () => { ctxMenu.style.display = 'none'; });
+document.addEventListener('contextmenu', e => {
+  if (!avatarDiv.contains(e.target)) ctxMenu.style.display = 'none';
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') ctxMenu.style.display = 'none';
+});
+
+ctxDownBtn.addEventListener('click', () => {
+  ctxMenu.style.display = 'none';
+  exportAvatarPNG();
+});
+
+function exportAvatarPNG() {
+  const svgEl   = document.getElementById('avatar-svg');
+  const initials = document.getElementById('avatar-initials').textContent.trim();
+  const size    = 308;
+
+  // Clone the live SVG so we can inject the initials as a proper SVG text node
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute('width',  size);
+  clone.setAttribute('height', size);
+
+  if (initials) {
+    const g = clone.querySelector('g[clip-path]');
+    const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    textEl.setAttribute('x', '154');
+    textEl.setAttribute('y', '154');
+    textEl.setAttribute('text-anchor', 'middle');
+    textEl.setAttribute('dominant-baseline', 'central');
+    textEl.setAttribute('font-family', 'Helvetica, Arial, sans-serif');
+    textEl.setAttribute('font-weight', '500');
+    textEl.setAttribute('font-size', '123');
+    textEl.setAttribute('fill', '#ffffff');
+    textEl.textContent = initials;
+    (g || clone).appendChild(textEl);
+  }
+
+  const svgStr = new XMLSerializer().serializeToString(clone);
+  const blob   = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url    = URL.createObjectURL(blob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width  = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Clip to circle to match the avatar's border-radius:50%
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.drawImage(img, 0, 0, size, size);
+    URL.revokeObjectURL(url);
+
+    const rawName = nameInput.textContent.trim() || 'avatar';
+    const filename = rawName.toLowerCase().replace(/\s+/g, '-') + '.png';
+
+    canvas.toBlob(pngBlob => {
+      const a = document.createElement('a');
+      a.href     = URL.createObjectURL(pngBlob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, 'image/png');
+  };
+  img.src = url;
+}
 </script>
 </body>
 </html>
