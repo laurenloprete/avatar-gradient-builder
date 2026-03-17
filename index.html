@@ -1042,7 +1042,9 @@ function updateAvatar(text) {
   const ch = text.trim()[0];
   if (ch !== firstCh || colors.length === 0) {
     firstCh = ch;
-    colors  = selectTriadFromPalette(ch, sessSeed);
+    colors  = paletteMode
+      ? [palette[0], palette[1], palette[2]]
+      : selectTriadFromPalette(ch, sessSeed);
     svBg.style.fill = colors[0];
   }
 
@@ -1138,7 +1140,7 @@ swatchEls.forEach((swatch, i) => {
   });
 
   // Live color picker updates — input fires while dragging, change fires on close
-  function applyColorChange() {
+  function applyColorChange(isLive) {
     palette[i] = input.value;
     swatch.style.background = input.value;
     if (!paletteMode) {
@@ -1147,10 +1149,16 @@ swatchEls.forEach((swatch, i) => {
     }
     colors  = [];
     firstCh = '';
+    // Disable fill transition while dragging for instant feedback; restore on release
+    if (isLive) {
+      [svB1, svB2, svB3].forEach(b => { b.style.transition = 'opacity 1.2s ease'; });
+    } else {
+      [svB1, svB2, svB3].forEach(b => { b.style.transition = BLOB_TRANSITION; });
+    }
     updateAvatar(nameInput.textContent);
   }
-  input.addEventListener('input', applyColorChange);
-  input.addEventListener('change', applyColorChange);
+  input.addEventListener('input',  () => applyColorChange(true));
+  input.addEventListener('change', () => applyColorChange(false));
 });
 
 // GEN pill — returns to generative mode and resets swatches to defaults
