@@ -1156,6 +1156,9 @@ swatchEls.forEach((swatch, i) => {
       [svB1, svB2, svB3].forEach(b => { b.style.transition = BLOB_TRANSITION; });
     }
     updateAvatar(nameInput.textContent);
+    // Rebuild grid: debounce during live drag to avoid regenerating 100 SVGs per tick
+    clearTimeout(gridRebuildTimer);
+    gridRebuildTimer = setTimeout(rebuildGrid, isLive ? 150 : 0);
   }
   input.addEventListener('input',  () => applyColorChange(true));
   input.addEventListener('change', () => applyColorChange(false));
@@ -1173,6 +1176,7 @@ modeBtn.addEventListener('click', () => {
   firstCh = '';
   updatePaletteUI();
   updateAvatar(nameInput.textContent);
+  rebuildGrid();
 });
 
 /* ════════════════════════════════════════════════════════════
@@ -1234,6 +1238,14 @@ const GRID_NAMES = [
 ];
 
 let gridBuilt = false;
+let gridRebuildTimer = null;
+
+function rebuildGrid() {
+  const container = document.getElementById('avatar-grid');
+  container.innerHTML = '';
+  gridBuilt = false;
+  if (document.body.classList.contains('page-2')) buildAvatarGrid();
+}
 
 function buildAvatarGrid() {
   if (gridBuilt) return;
